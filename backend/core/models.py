@@ -1,8 +1,15 @@
 from django.db import models
 from django.contrib.auth.models import AbstractUser
 from django.contrib.auth.validators import UnicodeUsernameValidator
-from django.core.validators import MinValueValidator
+from django.core.validators import MinValueValidator, MaxValueValidator
 from django.utils.timezone import now
+
+
+# Константы для валидации
+MIN_COOKING_TIME = 1
+MAX_COOKING_TIME = 32000
+MIN_AMOUNT = 1
+MAX_AMOUNT = 32000
 
 
 class Ingredient(models.Model):
@@ -85,7 +92,8 @@ class Recipe(models.Model):
     )
     cooking_time = models.PositiveSmallIntegerField(
         verbose_name='Время приготовления в минутах',
-        validators=[MinValueValidator(1)],
+        validators=[MinValueValidator(
+            MIN_COOKING_TIME), MaxValueValidator(MAX_COOKING_TIME)],
     )
     date_published = models.DateTimeField(
         default=now,
@@ -114,9 +122,10 @@ class RecipeIngredient(models.Model):
         related_name='ingredient_recipes',
         on_delete=models.CASCADE,
     )
-    amount = models.PositiveIntegerField(
+    amount = models.PositiveSmallIntegerField(
         verbose_name='Количество',
-        validators=[MinValueValidator(1)],
+        validators=[MinValueValidator(
+            MIN_AMOUNT), MaxValueValidator(MAX_AMOUNT)],
     )
 
     class Meta:
@@ -179,6 +188,7 @@ class Subscription(models.Model):
     class Meta:
         verbose_name = 'подписка'
         verbose_name_plural = 'Подписки'
+        ordering = ('user',)
         constraints = [
             models.UniqueConstraint(
                 fields=['user', 'author'],
@@ -207,6 +217,7 @@ class ShoppingCart(models.Model):
     class Meta:
         verbose_name = 'Список покупок'
         verbose_name_plural = 'Списки покупок'
+        ordering = ('user',)
         constraints = [
             models.UniqueConstraint(
                 fields=['user', 'recipe'],

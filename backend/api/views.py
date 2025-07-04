@@ -247,7 +247,7 @@ class RecipeViewSet(viewsets.ModelViewSet):
                 .order_by('ingredient__name')
             )
 
-            recipes = Recipe.objects.filter(shopping_carts__user=user)
+            recipes = user.shopping_carts.all()
 
             shopping_list_content = generate_shopping_list(
                 user, ingredients, recipes)
@@ -267,21 +267,15 @@ class RecipeViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['get'], url_path='get-link')
     def get_link(self, request, pk=None):
         """Получение короткой ссылки на рецепт."""
-        try:
-            if not Recipe.objects.filter(pk=pk).exists():
-                return Response({'error': f'Рецепт с ID = {pk} не найден'},
-                                status=status.HTTP_404_NOT_FOUND)
-            return Response(
-                {'short-link': request.build_absolute_uri(reverse(
-                    'recipe_redirect', args=[pk]
-                ))},
-                status=status.HTTP_200_OK
-            )
-        except Exception as e:
-            return Response(
-                {'error': 'Ошибка при создании ссылки'},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR
-            )
+        if not Recipe.objects.filter(pk=pk).exists():
+            return Response({'error': f'Рецепт с ID = {pk} не найден'},
+                            status=status.HTTP_404_NOT_FOUND)
+        return Response(
+            {'short-link': request.build_absolute_uri(reverse(
+                'recipe_redirect', args=[pk]
+            ))},
+            status=status.HTTP_200_OK
+        )
 
 
 class IngredientViewSet(viewsets.ReadOnlyModelViewSet):
