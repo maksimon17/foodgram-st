@@ -7,6 +7,14 @@ from core.models import (
 )
 
 
+# Константы для валидации
+DEFAULT_RECIPES_LIMIT = 10
+MIN_AMOUNT = 1
+MAX_AMOUNT = 32000
+MIN_COOKING_TIME = 1
+MAX_COOKING_TIME = 32000
+
+
 class CustomUserSerializer(UserSerializer):
     is_subscribed = serializers.SerializerMethodField()
     avatar = Base64ImageField(required=False, allow_null=True)
@@ -22,14 +30,9 @@ class CustomUserSerializer(UserSerializer):
         request = self.context.get('request')
         if not request:
             return False
-        try:
-            if not request.user.is_authenticated:
-                return False
-            return Subscription.objects.filter(
-                user=request.user, author=obj
-            ).exists()
-        except (AttributeError, TypeError):
+        if not request.user.is_authenticated:
             return False
+        return request.user.followers.filter(author=obj).exists()
 
     def to_representation(self, instance):
         representation = super().to_representation(instance)
@@ -55,8 +58,8 @@ class AuthorWithRecipesSerializer(CustomUserSerializer):
         )
 
     def get_recipes(self, obj):
-        request = self.context.get('request')
-        recipes_limit = request.GET.get('recipes_limit', 10**10)
+        request = self.context['request']
+        recipes_limit = request.GET.get('recipes_limit', DEFAULT_RECIPES_LIMIT)
         recipes = obj.recipes.all()[:int(recipes_limit)]
         return CompactRecipeSerializer(recipes, many=True,
                                        context=self.context).data
@@ -71,7 +74,8 @@ class IngredientSerializer(serializers.ModelSerializer):
 class RecipeIngredientSerializer(serializers.ModelSerializer):
     id = serializers.PrimaryKeyRelatedField(queryset=Ingredient.objects.all())
     name = serializers.CharField(source='ingredient.name', read_only=True)
-    amount = serializers.IntegerField(min_value=1)
+    amount = serializers.IntegerField(
+        min_value=MIN_AMOUNT, max_value=MAX_AMOUNT)
     measurement_unit = serializers.CharField(
         source='ingredient.measurement_unit', read_only=True
     )
@@ -88,7 +92,8 @@ class RecipeSerializer(serializers.ModelSerializer):
     )
     is_favorited = serializers.SerializerMethodField()
     is_in_shopping_cart = serializers.SerializerMethodField()
-    cooking_time = serializers.IntegerField(min_value=1)
+    cooking_time = serializers.IntegerField(
+        min_value=MIN_COOKING_TIME, max_value=MAX_COOKING_TIME)
     image = Base64ImageField(allow_null=True)
 
     class Meta:
@@ -126,27 +131,17 @@ class RecipeSerializer(serializers.ModelSerializer):
         request = self.context.get('request')
         if not request or not hasattr(request, 'user'):
             return False
-        try:
-            if not request.user.is_authenticated:
-                return False
-            return ShoppingCart.objects.filter(
-                user=request.user, recipe=recipe
-            ).exists()
-        except (AttributeError, TypeError):
+        if not request.user.is_authenticated:
             return False
+        return request.user.shopping_carts.filter(recipe=recipe).exists()
 
     def get_is_favorited(self, recipe):
         request = self.context.get('request')
         if not request or not hasattr(request, 'user'):
             return False
-        try:
-            if not request.user.is_authenticated:
-                return False
-            return Favorite.objects.filter(
-                user=request.user, recipe=recipe
-            ).exists()
-        except (AttributeError, TypeError):
+        if not request.user.is_authenticated:
             return False
+        return request.user.favorites.filter(recipe=recipe).exists()
 
     def validate_ingredients(self, ingredients):
         if not ingredients:
