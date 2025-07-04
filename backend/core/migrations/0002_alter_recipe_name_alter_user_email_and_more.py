@@ -19,7 +19,8 @@ class Migration(migrations.Migration):
         migrations.AlterField(
             model_name='user',
             name='email',
-            field=models.EmailField(max_length=254, unique=True, verbose_name='email'),
+            field=models.EmailField(
+                max_length=254, unique=True, verbose_name='email'),
         ),
         migrations.AlterField(
             model_name='user',
@@ -34,6 +35,7 @@ class Migration(migrations.Migration):
         migrations.AlterField(
             model_name='user',
             name='username',
-            field=models.CharField(max_length=150, unique=True, validators=[django.contrib.auth.validators.UnicodeUsernameValidator], verbose_name='Имя пользователя'),
+            field=models.CharField(max_length=150, unique=True, validators=[
+                                   django.contrib.auth.validators.UnicodeUsernameValidator], verbose_name='Имя пользователя'),
         ),
     ]

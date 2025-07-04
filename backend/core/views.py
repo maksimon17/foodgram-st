@@ -9,5 +9,5 @@ def recipe_redirect(request, recipe_id):
         recipe = Recipe.objects.get(id=recipe_id)
     except Recipe.DoesNotExist:
         raise Http404(f"Рецепт с ID={recipe_id} не найден")
-    
+
     return redirect(f'/recipes/{recipe_id}/')
