@@ -9,7 +9,7 @@ from core.models import (
 
 class CustomUserSerializer(UserSerializer):
    is_subscribed = serializers.SerializerMethodField()
-   avatar = Base64ImageField()
+   avatar = Base64ImageField(required=False, allow_null=True)
 
    class Meta:
        model = User
@@ -20,11 +20,26 @@ class CustomUserSerializer(UserSerializer):
 
    def get_is_subscribed(self, obj):
        request = self.context.get('request')
-       if request and request.user.is_authenticated:
+       if not request:
+           return False
+       try:
+           if not request.user.is_authenticated:
+               return False
            return Subscription.objects.filter(
                user=request.user, author=obj
            ).exists()
-       return False
+       except (AttributeError, TypeError):
+           return False
+
+   def to_representation(self, instance):
+       representation = super().to_representation(instance)
+       # Если avatar пустой или None, возвращаем None
+       try:
+           if not instance.avatar or instance.avatar.name == 'users/default_avatar.jpg':
+               representation['avatar'] = None
+       except (AttributeError, ValueError):
+           representation['avatar'] = None
+       return representation
 
 
 class AuthorWithRecipesSerializer(CustomUserSerializer):    
@@ -108,16 +123,30 @@ class RecipeSerializer(serializers.ModelSerializer):
        return super().update(instance, validated_data)
 
    def get_is_in_shopping_cart(self, recipe):
-       user = self.context['request'].user
-       return user.is_authenticated and ShoppingCart.objects.filter(
-           user=user, recipe=recipe
-       ).exists()
+       request = self.context.get('request')
+       if not request or not hasattr(request, 'user'):
+           return False
+       try:
+           if not request.user.is_authenticated:
+               return False
+           return ShoppingCart.objects.filter(
+               user=request.user, recipe=recipe
+           ).exists()
+       except (AttributeError, TypeError):
+           return False
 
    def get_is_favorited(self, recipe):
-       user = self.context['request'].user
-       return user.is_authenticated and Favorite.objects.filter(
-           user=user, recipe=recipe
-       ).exists()
+       request = self.context.get('request')
+       if not request or not hasattr(request, 'user'):
+           return False
+       try:
+           if not request.user.is_authenticated:
+               return False
+           return Favorite.objects.filter(
+               user=request.user, recipe=recipe
+           ).exists()
+       except (AttributeError, TypeError):
+           return False
 
    def validate_ingredients(self, ingredients):
        if not ingredients:
